@@ -1,0 +1,104 @@
+import { GameRound } from "../models/gameRound.model.js";
+import { asyncHandler } from "../utils/asyncHandler.js";
+import { apiResponse } from "../utils/apiResponse.js";
+import { apiError } from "../utils/apiError.js";
+
+const setgameround = asyncHandler(async (req, res) => {
+    const { gameType, multipliers, startTime, endTime } = req.body;
+
+    // ✅ Validate required fields
+    if (!gameType || !Array.isArray(multipliers) || multipliers.length === 0 || !startTime || !endTime) {
+        throw new apiError(400, "All fields (gameType, multipliers[], startTime, endTime) are required");
+    }
+
+    // ✅ Create the game round
+    const newGameRound = await GameRound.create({
+        gameType,
+        multipliers,
+        startTime,
+        endTime,
+        status: "scheduled",        // default status
+        createdByBot: false,
+        createdByAdmin: true,
+        messageSent: false
+    });
+
+    // ✅ Respond with success
+    return res.status(201).json(
+        new apiResponse(201, newGameRound, "✅ Game round scheduled successfully")
+    );
+});
+
+const getAllGameRounds = asyncHandler(async (req, res) => {
+    const { gameType, status } = req.query;
+
+    // Optional filters
+    const filter = {};
+    if (gameType) filter.gameType = gameType;
+    if (status) filter.status = status;
+
+    const rounds = await GameRound.find(filter).sort({ startTime: -1 });
+
+    return res.status(200).json(
+        new apiResponse(200, rounds, "🎮 All game rounds fetched successfully")
+    );
+});
+
+const deleteGameRound = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+
+    // Check if the ID is provided
+    if (!id) {
+        throw new apiError(400, "❌ Game round ID is required");
+    }
+
+    // Find and delete the game round
+    const deleted = await GameRound.findByIdAndDelete(id);
+
+    if (!deleted) {
+        throw new apiError(404, "❌ Game round not found");
+    }
+
+    return res.status(200).json(
+        new apiResponse(200, deleted, "🗑️ Game round deleted successfully")
+    );
+});
+
+const updateGameRound = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { gameType, multipliers, startTime, endTime, status } = req.body;
+
+    // ✅ Validation
+    if (!gameType || !multipliers || !Array.isArray(multipliers) || !startTime || !endTime) {
+        throw new apiError(400, "All fields (gameType, multipliers[], startTime, endTime) are required");
+    }
+
+    // ✅ Find and update
+    const updatedRound = await GameRound.findByIdAndUpdate(
+        id,
+        {
+            gameType,
+            multipliers,
+            startTime,
+            endTime,
+            status,
+            updatedAt: new Date()
+        },
+        { new: true } // return the updated document
+    );
+
+    if (!updatedRound) {
+        throw new apiError(404, "Game round not found");
+    }
+
+    return res.status(200).json(
+        new apiResponse(200, updatedRound, "✅ Game round updated successfully")
+    );
+});
+
+export {
+    setgameround,
+    getAllGameRounds,
+    deleteGameRound,
+    updateGameRound
+}
