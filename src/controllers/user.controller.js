@@ -233,15 +233,13 @@ const changeCurrentPassword = asyncHandler(async (req, res) => {
 })
 
 const requestResetOtp = asyncHandler(async (req, res) => {
-    const { email, phoneNumber } = req.body;
+    const { email } = req.body;
 
-    if (!email && !phoneNumber) {
+    if (!email) {
         throw new apiError(400, "Email or Phone Number is required");
     }
 
-    const user = await User.findOne({
-        $or: [{ email }, { phoneNumber }]
-    });
+    const user = await User.findOne({email});
 
     if (!user) {
         throw new apiError(404, "No user found with provided contact details");
@@ -268,9 +266,9 @@ const requestResetOtp = asyncHandler(async (req, res) => {
 });
 
 const resetPassword = asyncHandler(async (req, res) => {
-    const { userId, emailOTP, smsOTP, newPassword } = req.body;
+    const { userId, emailOTP, newPassword } = req.body;
 
-    if (!newPassword || (!emailOTP && !smsOTP)) {
+    if (!newPassword || (!emailOTP)) {
         throw new apiError(400, "New password and at least one OTP are required");
     }
 
@@ -286,9 +284,8 @@ const resetPassword = asyncHandler(async (req, res) => {
     }
 
     const isEmailValid = emailOTP && otpLog.emailOTP === emailOTP;
-    const isSmsValid = smsOTP && otpLog.smsOTP === smsOTP;
 
-    if (!isEmailValid && !isSmsValid) {
+    if (!isEmailValid) {
         throw new apiError(400, "OTP is incorrect");
     }
 
@@ -339,6 +336,19 @@ const getCurrentUser = asyncHandler(async (req, res) => {
     });
 });
 
+const getAllUsers = asyncHandler(async (req, res) => {
+  // Find all users, excluding password and refreshToken
+  const users = await User.find().select("-password -refreshToken");
+
+  if (!users || users.length === 0) {
+    throw new apiError(404, "No users found");
+  }
+
+  res.status(200).json({
+    users,
+  });
+});
+
 const updateAccountDetails = asyncHandler(async (req, res) => {
     const { fullName, email } = req.body
 
@@ -375,5 +385,6 @@ export {
     resetPassword,
     getVisibleGames,
     getCurrentBalance,
-    getCurrentUser
+    getCurrentUser,
+    getAllUsers
 }

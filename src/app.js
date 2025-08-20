@@ -31,7 +31,7 @@ import paymentRouter from "./routes/payment.routes.js"
 import telegramRoute from "./routes/telegramBot.routes.js"
 import mineGameRouter from "./routes/mineGame.routes.js"
 import colorGameRouter from "./routes/ColorGame.routes.js"
-import Razorpay from "razorpay";
+import aviatorGameRouter from "./routes/aviatorGame.routes.js"
 
 // //Routes Declaration
 app.use("/api/v1/users", userRouter)
@@ -42,6 +42,7 @@ app.use("/api/v1/chicken-road", chickenGameRouter)
 app.use("/api/v1/mine", mineGameRouter)
 app.use("/api/v1/upi", paymentRouter)
 app.use("/api/v1/color", colorGameRouter)
+app.use("/api/v1/aviator", aviatorGameRouter)
 app.use("/api/v1/telegram", telegramRoute)
 
 export { app }

@@ -1,5 +1,3 @@
-// controllers/aviatorGame.controller.js
-
 import AviatorRound from '../models/aviatorRound.model.js';
 import { User } from "../models/user.model.js";
 import { GameHistory } from "../models/gameHistory.model.js";
@@ -90,7 +88,7 @@ export async function completeCurrentRound() {
 }
 
 // Process cash out for a player
-export async function cashOut(userId) {
+export async function cashOut(userId, io) {
     const bet = bets.find(b => b.userId === userId && !b.cashedOut);
     if (!bet) throw new Error("No active bet");
 
@@ -127,6 +125,10 @@ export async function cashOut(userId) {
     });
     await betDoc.save();
 
+    if (io) {
+        io.emit("newLiveBet", getLiveBets());
+    }
+
     return { winnings, multiplier: currentMultiplier };
 }
 
@@ -134,7 +136,7 @@ export async function cashOut(userId) {
 export async function placeBet(betData, io) {
     const { userId, amount } = betData;
 
-    if (!isGameRunning || currentMultiplier > 1.05) {
+    if (!isGameRunning) {
         throw new Error("Wait for next round");
     }
 
@@ -184,6 +186,7 @@ export function initializeColorGameTimer(io) {
     async function startGameLoop() {
         try {
             const round = await createNewRound();
+            bets = []
             console.log(`🚀 Aviator round started! Crash at: ${round.crashPoint}x`);
 
             io.emit("roundStart", { crashPoint });
