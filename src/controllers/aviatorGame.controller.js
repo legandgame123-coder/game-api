@@ -1,7 +1,7 @@
 import AviatorRound from '../models/aviatorRound.model.js';
 import { User } from "../models/user.model.js";
 import { GameHistory } from "../models/gameHistory.model.js";
-import Bet from "../models/AviatorBet.model.js";
+import Bet from "../models/aviatorBet.model.js";
 
 // Game State
 let currentRound = null;
