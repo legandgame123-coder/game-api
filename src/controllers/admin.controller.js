@@ -5,6 +5,7 @@ import { GameRound } from "../models/gameRound.model.js";
 import { GameVisibility } from "../models/gameVisibility.model.js"
 import { User } from "../models/user.model.js";
 import { AdminAccess } from "../models/adminAccess.model.js";
+import { GameHistory } from "../models/gameHistory.model.js";
 
 const createGameRound = asyncHandler(async (req, res) => {
   const { gameType, multipliers, startTime, endTime } = req.body;
@@ -107,7 +108,7 @@ const addAdmin = asyncHandler(async (req, res) => {
 })
 
 const updateAdmin = asyncHandler(async (req, res) => {
-  const { email, fullName, password ,phoneNumber, accessPages = [] } = req.body;
+  const { email, fullName, password, phoneNumber, accessPages = [] } = req.body;
 
   const user = await User.findOne({ email });
   if (!user || user.role !== "admin") {
@@ -195,6 +196,30 @@ const getAdminAccessPages = asyncHandler(async (req, res) => {
   );
 });
 
+const getGameHistoryByUserAndType  = async (req, res) => {
+    const { userId, gameType } = req.params; // Extract userId and gameType from the request parameters
+
+    try {
+        // Find game history by userId and gameType
+        const history = await GameHistory.find({ 
+            userId, 
+            gameType 
+        });
+
+        // Send the found history data
+        return res.status(200).json({
+            message: "Game history retrieved successfully",
+            data: history
+        });
+    } catch (error) {
+        // Handle any errors and send a 500 response
+        return res.status(500).json({
+            message: "An error occurred while fetching game history",
+            error: error.message
+        });
+    }
+};
+
 export {
   createGameRound,
   getAllGameRounds,
@@ -205,5 +230,6 @@ export {
   updateAdmin,
   deleteAdmin,
   getAllAdmins,
-  getAdminAccessPages
+  getAdminAccessPages,
+  getGameHistoryByUserAndType 
 }

@@ -1,7 +1,8 @@
 import AviatorRound from '../models/aviatorRound.model.js';
 import { User } from "../models/user.model.js";
 import { GameHistory } from "../models/gameHistory.model.js";
-import Bet from "../models/aviatorBet.model.js";
+import Bet from "../models/AviatorBet.model.js";
+import { GameRound } from '../models/gameRound.model.js';
 
 // Game State
 let currentRound = null;
@@ -25,8 +26,21 @@ function generateCrashPoint() {
 // Create a new round
 export async function createNewRound() {
     try {
+        const now = new Date();
+
+        const scheduledRound = await GameRound.findOne({
+            gameType: "aviator",
+            startTime: { $lte: now },
+            endTime: { $gt: now },
+            status: { $in: ["scheduled", "active"] }
+        }).sort({ startTime: -1 });
+        if (scheduledRound) {
+            crashPoint = scheduledRound.multipliers[0];
+        } else {
+            crashPoint = generateCrashPoint();
+        }
+
         currentMultiplier = START_MULTIPLIER;
-        crashPoint = generateCrashPoint();
         bets = [];
         isGameRunning = true;
 
@@ -243,7 +257,7 @@ export async function getGameHistory(limit = 50) {
 // Get user bets
 export async function getUserBets(userId, limit = 50) {
     try {
-        return await Bet.find({ userId })
+        return await GameHistory.find({ userId, gameType: 'aviator' })
             .sort({ createdAt: -1 })
             .limit(limit)
             .populate('roundId');

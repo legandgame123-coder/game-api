@@ -15,7 +15,7 @@ router.route("/").get(getAllUsers)
 //secured routes
 router.route("/me").get(verifyJWT,  getCurrentUser)
 router.route("/logout").post(verifyJWT,  logoutUser)
-router.route("/change-password").post(verifyJWT,  changeCurrentPassword)
+router.route("/change-password").post(changeCurrentPassword)
 router.route("/refresh-token").post(refreshAccessToken)
 
 export default router

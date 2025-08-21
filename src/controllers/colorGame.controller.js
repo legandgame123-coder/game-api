@@ -1,7 +1,7 @@
 import ColorGameRound from '../models/ColorGameRound.model.js';
 import Bet from '../models/Bet.model.js';
-import {User} from "../models/user.model.js"
-import {GameHistory} from "../models/gameHistory.model.js"
+import { User } from "../models/user.model.js"
+import { GameHistory } from "../models/gameHistory.model.js"
 
 let currentRound = null;
 let gameTimer = null;
@@ -67,7 +67,21 @@ export async function completeCurrentRound() {
   if (!currentRound) return null;
 
   try {
-    const winningNumber = Math.floor(Math.random() * 10);
+    let winningNumber = Math.floor(Math.random() * 10);
+    const now = new Date();
+
+    const scheduledRound = await GameRound.findOne({
+      gameType: "color",
+      startTime: { $lte: now },
+      endTime: { $gt: now },
+      status: { $in: ["scheduled", "active"] }
+    }).sort({ startTime: -1 });
+    if (scheduledRound) {
+      winningNumber = scheduledRound.multipliers[0];
+    } else {
+      winningNumber = Math.floor(Math.random() * 10);
+    }
+
     const winningColor = getColorByNumber(winningNumber);
     const size = getSizeByNumber(winningNumber);
 
