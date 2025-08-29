@@ -15,7 +15,7 @@ const walletTransactionSchema = new mongoose.Schema({
     },
     method: {
         type: String,
-        enum: ["UPI", "Crypto"]
+        enum: ["UPI", "Crypto", "Telegram"]
     },
     status: {
         type: String,

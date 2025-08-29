@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { registerUser, loginUser, logoutUser, refreshAccessToken, changeCurrentPassword, requestResetOtp, resetPassword, getVisibleGames, getCurrentUser, getCurrentBalance, getAllUsers } from "../controllers/user.controller.js";
+import { registerUser, loginUser, logoutUser, refreshAccessToken, changeCurrentPassword, requestResetOtp, resetPassword, getVisibleGames, getCurrentUser, getCurrentBalance, getAllUsers, updateAccountDetails } from "../controllers/user.controller.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
 
 const router = Router() 
@@ -11,6 +11,7 @@ router.route("/reset-password").post(resetPassword)
 router.route("/balance/:userId").get(getCurrentBalance);
 router.route("/visible-games").get(getVisibleGames);
 router.route("/").get(getAllUsers)
+router.route("/:editUserId").put(updateAccountDetails)
 
 //secured routes
 router.route("/me").get(verifyJWT,  getCurrentUser)

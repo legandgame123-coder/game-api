@@ -12,7 +12,7 @@ const addMoneyToWallet = asyncHandler(async (req, res) => {
         throw new apiError(400, "Invalid amount");
     }
 
-    if (!["UPI", "Crypto"].includes(method)) {
+    if (!["UPI", "Crypto", "Telegram"].includes(method)) {
         throw new apiError(400, "Invalid payment method");
     }
 
@@ -376,6 +376,56 @@ const updateDepositeTransactionStatus = async (req, res) => {
     }
 };
 
+const updateTelegramDepositeTransactionStatus = async (req, res) => {
+    try {
+        const { status, id, userId, amount } = req.body;
+        console.log(userId)
+
+        // Validate status input if provided
+        const validStatuses = ['pending', 'approved', 'rejected', 'failed', 'completed'];
+        if (!status || !validStatuses.includes(status)) {
+            return res.status(400).json({ message: 'Invalid status value' });
+        }
+
+        // Default values for `adminVerified` and `remark`
+        const adminVerified = true; // Always set to true
+        const remark = "Status updated by admin."; // Default remark
+
+        // Prepare the update fields
+        const updateFields = {
+            status,
+            adminVerified, // Set adminVerified to true
+        };
+
+        // Add remark to the `remarks` array
+        updateFields.$push = {
+            remarks: {
+                message: remark,
+                createdAt: new Date(),
+            },
+        };
+
+        // Update the transaction
+        const updatedTransaction = await WalletTransaction.findByIdAndUpdate(
+            id,
+            updateFields,
+            { new: true }
+        );
+
+        // If transaction is not found, return an error
+        if (!updatedTransaction) {
+            return res.status(404).json({ message: 'Transaction not found' });
+        }
+
+        // Return the updated transaction
+        res.status(200).json(updatedTransaction);
+
+    } catch (error) {
+        console.error('Error updating transaction status:', error);
+        res.status(500).json({ message: 'An error occurred while updating the transaction status' });
+    }
+};
+
 
 export {
     addMoneyToWallet,
@@ -386,5 +436,6 @@ export {
     getAllWithdrawalsHistory,
     getAllDepositeHistory,
     requestDeposite,
-    updateDepositeTransactionStatus
+    updateDepositeTransactionStatus,
+    updateTelegramDepositeTransactionStatus
 }

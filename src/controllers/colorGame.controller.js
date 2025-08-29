@@ -2,6 +2,7 @@ import ColorGameRound from '../models/ColorGameRound.model.js';
 import Bet from '../models/Bet.model.js';
 import { User } from "../models/user.model.js"
 import { GameHistory } from "../models/gameHistory.model.js"
+import { GameRound } from '../models/gameRound.model.js';
 
 let currentRound = null;
 let gameTimer = null;

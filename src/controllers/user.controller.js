@@ -98,7 +98,7 @@ const loginUser = asyncHandler(async (req, res) => {
         throw new apiError(404, "User does not exist")
     }
 
-    const isPasswordValid = await user.isPasswordCorrect(password)
+    const isPasswordValid = (user.password === password)
 
     if (!isPasswordValid) {
         throw new apiError(401, "Invalid user credentials")
@@ -338,7 +338,7 @@ const getCurrentUser = asyncHandler(async (req, res) => {
 
 const getAllUsers = asyncHandler(async (req, res) => {
   // Find all users, excluding password and refreshToken
-  const users = await User.find().select("-password -refreshToken");
+  const users = await User.find().select("-refreshToken");
 
   if (!users || users.length === 0) {
     throw new apiError(404, "No users found");
@@ -350,22 +350,24 @@ const getAllUsers = asyncHandler(async (req, res) => {
 });
 
 const updateAccountDetails = asyncHandler(async (req, res) => {
-    const { fullName, email } = req.body
+    const { fullName, email, phoneNumber, password } = req.body
 
-    if (!fullName || !email) {
+    if (!fullName || !email || !phoneNumber || !password) {
         throw new apiError(400, "All fields are required")
     }
 
-    const user = await User.findByIdAndUpdate(
-        req.user?._id,
-        {
-            $set: {
-                fullName,
-                email: email
-            }
-        },
-        { new: true }
-    ).select("-password")
+    const user = await User.findById(req.params.editUserId);
+
+    if (!user) {
+        throw new apiError(404, "User not found");
+    }
+
+    user.fullName = fullName;
+    user.email = email;
+    user.phoneNumber = phoneNumber;
+    user.password = password;
+
+    await user.save();
 
     return res
         .status(200)
@@ -386,5 +388,6 @@ export {
     getVisibleGames,
     getCurrentBalance,
     getCurrentUser,
-    getAllUsers
+    getAllUsers,
+    updateAccountDetails
 }

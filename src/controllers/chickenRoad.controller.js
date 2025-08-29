@@ -7,7 +7,7 @@ import { apiResponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 
 const startGame = asyncHandler(async (req, res) => {
-    const { betAmount, gameType, userId } = req.body;
+    const { betAmount, gameType, userId, difficulty } = req.body;
 
     if (!betAmount || betAmount < 10) {
         throw new apiError(400, "Invalid bet amount");
@@ -48,7 +48,27 @@ const startGame = asyncHandler(async (req, res) => {
         roundId = scheduledRound._id;
     } else {
         // 🔁 Generate fallback random multipliers
-        const totalSteps = Math.floor(Math.random() * 7) + 2;
+        let totalSteps = Math.floor(Math.random() * 7) + 2;
+        let multipl = 0.4;
+        let startPoint = 1.02
+        if (difficulty === "Medium") {
+            totalSteps = Math.floor(Math.random() * 6) + 2;
+            multipl = 0.6;
+            startPoint = 1.22
+        } else if (difficulty === "Hard") {
+            totalSteps = Math.floor(Math.random() * 5) + 2;
+            multipl = 0.75;
+            startPoint = 1.37
+        } else if (difficulty === "Hardest") {
+            totalSteps = Math.floor(Math.random() * 4) + 2;
+            multipl = 0.9;
+            startPoint = 1.52
+        } else {
+            totalSteps = Math.floor(Math.random() * 7) + 2;
+            multipl = 0.4;
+            startPoint = 1.02
+        }
+
         const crashIndex = Math.floor(Math.random() * totalSteps);
 
         for (let i = 0; i < totalSteps; i++) {
@@ -56,7 +76,7 @@ const startGame = asyncHandler(async (req, res) => {
                 multipliers.push(0.0);
                 break;
             }
-            const multiplier = parseFloat((1 + i * 0.4).toFixed(2));
+            const multiplier = parseFloat((startPoint + i * multipl).toFixed(2));
             multipliers.push(multiplier);
         }
     }
