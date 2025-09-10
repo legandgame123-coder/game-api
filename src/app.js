@@ -45,6 +45,10 @@ import qrRouteCrypto from "./routes/qr.crypto.routes.js";
 import SpinnerPriceRoute from "./routes/spinner.routes.js";
 import referAmount from "./routes/refer.amount.routes.js";
 
+import notificationRouter from "./routes/notification.routes.js";
+import telegramAmount from "./routes/telegram.amount.routes.js";
+
+app.use("/api/v1/notification", notificationRouter);
 // //Routes Declaration
 app.use("/api/v1/users", userRouter);
 app.use("/api/v1/otp", otpRouter);
@@ -60,5 +64,6 @@ app.use("/api/v1/qrcode", qrRoute);
 app.use("/api/v1/qrcodecrypto", qrRouteCrypto);
 app.use("/api/v1/spinner", SpinnerPriceRoute);
 app.use("/api/v1/refer-amount", referAmount);
+app.use("/api/v1/telegram-amount", telegramAmount);
 
 export { app };

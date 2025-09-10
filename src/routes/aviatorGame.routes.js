@@ -2,7 +2,8 @@ import express from 'express';
 import {
   placeBet,
   getUserBets,
-  cashOut
+  cashOut,
+  fetchAllBetsAviator
 } from '../controllers/aviatorGame.controller.js';
 
 const router = express.Router();
@@ -34,6 +35,15 @@ router.get('/user/:userId/bets', async (req, res) => {
     const { userId } = req.params;
     const limit = parseInt(req.query.limit) || 50;
     const bets = await getUserBets(userId, limit);
+    res.json({ success: true, data: bets });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.get('/all-bets', async (req, res) => {
+  try {
+    const bets = await fetchAllBetsAviator();
     res.json({ success: true, data: bets });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });

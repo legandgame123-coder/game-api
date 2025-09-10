@@ -4,6 +4,26 @@ import { Withdrawal } from "../models/withdrawal.model.js";
 import { apiError } from "../utils/apiError.js";
 import { apiResponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
+import { createInterface } from "readline";
+import { TelegramClient } from "telegram";
+import { StringSession } from "telegram/sessions/index.js";
+import { Api } from "telegram";
+// import { TelegramClient } from "telegram";
+// import { StringSession } from "telegram/sessions/index.js";
+// import { Api } from "telegram";
+// import express from "express";
+// import promptSync from "prompt-sync";
+// const prompt = promptSync();
+// const apiId = 23416733; // my.telegram.org से लो
+// const apiHash = "e87f3e11b9917aa1cb3c0cd4f9a3c63c";
+// const stringSession = new StringSession(""); // पहली बार खाली
+
+// const client = new TelegramClient(stringSession, apiId, apiHash, {
+//   connectionRetries: 5,
+// });
+const apiId = 23416733;
+const apiHash = "e87f3e11b9917aa1cb3c0cd4f9a3c63c";
+const stringSession = new StringSession(process.env.TELEGRAM_SESSION || "");
 
 const addMoneyToWallet = asyncHandler(async (req, res) => {
   const { amount, method, isPaid } = req.body;
@@ -225,11 +245,9 @@ const updateWalletTransactionStatus = async (req, res) => {
     res.status(200).json(updatedTransaction);
   } catch (error) {
     console.error("Error updating transaction status:", error);
-    res
-      .status(500)
-      .json({
-        message: "An error occurred while updating the transaction status",
-      });
+    res.status(500).json({
+      message: "An error occurred while updating the transaction status",
+    });
   }
 };
 
@@ -260,6 +278,7 @@ const getAllWithdrawalsHistory = asyncHandler(async (req, res) => {
   );
 });
 
+// This one
 const getAllDepositeHistory = asyncHandler(async (req, res) => {
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 20;
@@ -272,6 +291,7 @@ const getAllDepositeHistory = asyncHandler(async (req, res) => {
       .limit(limit),
     WalletTransaction.countDocuments({ type: "deposit" }), // Count only 'withdrawal' transactions
   ]);
+  console.log(JSON.stringify(deposit));
 
   return res.status(200).json(
     new apiResponse(
@@ -287,61 +307,106 @@ const getAllDepositeHistory = asyncHandler(async (req, res) => {
   );
 });
 
-const requestDeposite = asyncHandler(async (req, res) => {
+const updateTelegramDepositeTransactionStatus = async (req, res) => {
+  const client = new TelegramClient(stringSession, apiId, apiHash, {
+    connectionRetries: 5,
+  });
+  await client.connect();
   try {
-    const {
-      userId,
-      amount,
-      method,
-      status, // optional, default is 'pending'
-      adminVerified, // optional, default false
-      details, // object containing transaction-specific details
-      remarks,
-    } = req.body;
+    const { status, id, userId, amount, channelId } = req.body;
+    console.log(userId);
+    console.log("📩 Body:", JSON.stringify(req.body));
 
-    // 1. Validate input
-    if (!amount || amount <= 0) {
-      throw new apiError(400, "Invalid amount");
+    // Validate status input if provided
+    const validStatuses = [
+      "pending",
+      "approved",
+      "rejected",
+      "failed",
+      "completed",
+    ];
+    if (!status || !validStatuses.includes(status)) {
+      return res.status(400).json({ message: "Invalid status value" });
     }
 
-    if (!userId || !amount || !method) {
-      return res.status(400).json({ message: "Required fields missing" });
+    // Default values for `adminVerified` and `remark`
+    const adminVerified = true; // Always set to true
+    const remark = "Status updated by admin."; // Default remark
+
+    // Prepare the update fields
+    const updateFields = {
+      status,
+      adminVerified, // Set adminVerified to true
+    };
+
+    // Add remark to the `remarks` array
+    updateFields.$push = {
+      remarks: {
+        message: remark,
+        createdAt: new Date(),
+      },
+    };
+
+    // Update the transaction
+
+    const transaction = await WalletTransaction.findById(id);
+    console.log("Transaction found:", transaction);
+    if (status === "approved") {
+      console.log(`Channel found : ${transaction.details.telegramID}`);
+      try {
+        const channel = await client.getEntity(channelId);
+        try {
+          const user = await client.getEntity(transaction.details.telegramID);
+
+          try {
+            await WalletTransaction.findByIdAndUpdate(id, updateFields, {
+              new: true,
+            });
+
+            await client.connect();
+            console.log("✅ Reconnected with saved session!");
+            try {
+              await client.invoke(
+                new Api.channels.InviteToChannel({
+                  channel: channel,
+                  users: [user],
+                })
+              );
+              res.json({ success: true, message: "User invited!" });
+            } catch (err) {
+              console.error("Failed to invite user:", err);
+              res.json({ success: false, message: "Failed to invite user" });
+            }
+          } catch (err) {
+            res.json({ success: false, message: "Failed to invite user" });
+          }
+        } catch (error) {
+          res.json({
+            success: false,
+            message: "User Telegram ID not found",
+          });
+        }
+      } catch (err) {
+        console.error("Failed to reconnect:", err);
+        res.json({
+          success: false,
+          message: "Channel not found ",
+        });
+      }
+    } else if (status === "rejected") {
+      return res.status(404).json({ message: "Transaction not found" });
     }
 
-    const user = await User.findById(userId);
-    if (!user) {
-      throw new apiError(404, "User not found");
-    }
+    // If transaction is not found, return an error
 
-    // 3. Log WalletTransaction (status: pending)
-    const newTransaction = new WalletTransaction({
-      userId,
-      type: "deposit",
-      amount,
-      method,
-      status, // will fallback to default if undefined
-      adminVerified, // will fallback to default if undefined
-      details: details || {},
-      remarks: remarks || [],
-    });
-    console.log(details);
-
-    const savedTransaction = await newTransaction.save();
-
-    return res.status(201).json(
-      new apiResponse(
-        201,
-        {
-          savedTransaction,
-        },
-        "✅ deposit request submitted. Awaiting admin approval."
-      )
-    );
+    // Return the updated transaction
   } catch (error) {
-    console.error("Error creating wallet transaction:", error);
-    res.status(500).json({ message: "Server error" });
+    console.error("Error updating transaction status:", error);
+    res.status(500).json({
+      message: "An error occurred while updating the transaction status",
+    });
   }
-});
+};
 
 const updateDepositeTransactionStatus = async (req, res) => {
   try {
@@ -400,72 +465,67 @@ const updateDepositeTransactionStatus = async (req, res) => {
     res.status(200).json(updatedTransaction);
   } catch (error) {
     console.error("Error updating transaction status:", error);
-    res
-      .status(500)
-      .json({
-        message: "An error occurred while updating the transaction status",
-      });
+    res.status(500).json({
+      message: "An error occurred while updating the transaction status",
+    });
   }
 };
 
-const updateTelegramDepositeTransactionStatus = async (req, res) => {
+const requestDeposite = asyncHandler(async (req, res) => {
   try {
-    const { status, id, userId, amount } = req.body;
-    console.log(userId);
+    const {
+      userId,
+      amount,
+      method,
+      status, // optional, default is 'pending'
+      adminVerified, // optional, default false
+      details, // object containing transaction-specific details
+      remarks,
+    } = req.body;
 
-    // Validate status input if provided
-    const validStatuses = [
-      "pending",
-      "approved",
-      "rejected",
-      "failed",
-      "completed",
-    ];
-    if (!status || !validStatuses.includes(status)) {
-      return res.status(400).json({ message: "Invalid status value" });
+    // 1. Validate input
+    if (!amount || amount <= 0) {
+      throw new apiError(400, "Invalid amount");
     }
 
-    // Default values for `adminVerified` and `remark`
-    const adminVerified = true; // Always set to true
-    const remark = "Status updated by admin."; // Default remark
+    if (!userId || !amount || !method) {
+      return res.status(400).json({ message: "Required fields missing" });
+    }
 
-    // Prepare the update fields
-    const updateFields = {
-      status,
-      adminVerified, // Set adminVerified to true
-    };
+    const user = await User.findById(userId);
+    if (!user) {
+      throw new apiError(404, "User not found");
+    }
 
-    // Add remark to the `remarks` array
-    updateFields.$push = {
-      remarks: {
-        message: remark,
-        createdAt: new Date(),
-      },
-    };
+    // 3. Log WalletTransaction (status: pending)
+    const newTransaction = new WalletTransaction({
+      userId,
+      type: "deposit",
+      amount,
+      method,
+      status, // will fallback to default if undefined
+      adminVerified, // will fallback to default if undefined
+      details: details || {},
+      remarks: remarks || [],
+    });
+    console.log(details);
 
-    // Update the transaction
-    const updatedTransaction = await WalletTransaction.findByIdAndUpdate(
-      id,
-      updateFields,
-      { new: true }
+    const savedTransaction = await newTransaction.save();
+
+    return res.status(201).json(
+      new apiResponse(
+        201,
+        {
+          savedTransaction,
+        },
+        "✅ deposit request submitted. Awaiting admin approval."
+      )
     );
-
-    // If transaction is not found, return an error
-    if (!updatedTransaction) {
-      return res.status(404).json({ message: "Transaction not found" });
-    }
-
-    // Return the updated transaction
-    res.status(200).json(updatedTransaction);
   } catch (error) {
-    console.error("Error updating transaction status:", error);
-    res
-      .status(500)
-      .json({
-        message: "An error occurred while updating the transaction status",
-      });
+    console.error("Error creating wallet transaction:", error);
+    res.status(500).json({ message: "Server error" });
   }
-};
+});
 
 export {
   addMoneyToWallet,
